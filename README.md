@@ -15,6 +15,79 @@ File build release nằm tại:
 target\release\proxylite.exe
 ```
 
+## Chạy và build trên Linux
+
+ProxyLite dùng `eframe/egui` với backend OpenGL, X11 và Wayland. Trước khi build trên Linux cần cài Rust và một số thư viện hệ thống cho GUI.
+
+Ubuntu/Debian:
+
+```bash
+sudo apt update
+sudo apt install -y build-essential pkg-config libx11-dev libxi-dev libgl1-mesa-dev libegl1-mesa-dev libwayland-dev libxkbcommon-dev
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source "$HOME/.cargo/env"
+cargo build --release
+```
+
+Fedora:
+
+```bash
+sudo dnf groupinstall -y "Development Tools"
+sudo dnf install -y pkgconf-pkg-config libX11-devel libXi-devel mesa-libGL-devel mesa-libEGL-devel wayland-devel libxkbcommon-devel
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source "$HOME/.cargo/env"
+cargo build --release
+```
+
+CentOS/RHEL/Rocky Linux:
+
+```bash
+sudo dnf groupinstall -y "Development Tools"
+sudo dnf install -y pkgconf-pkg-config libX11-devel libXi-devel mesa-libGL-devel mesa-libEGL-devel wayland-devel libxkbcommon-devel
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source "$HOME/.cargo/env"
+cargo build --release
+```
+
+File build release trên Linux nằm tại:
+
+```text
+target/release/proxylite
+```
+
+Chạy thử:
+
+```bash
+./target/release/proxylite
+```
+
+Nếu build/chạy trên VPS Linux không có desktop hoặc không có DISPLAY, GUI sẽ không mở được. Khi đó cần chạy qua môi trường desktop, SSH X11 forwarding, VNC hoặc Remote Desktop cho Linux.
+
+## Chạy và build trên macOS
+
+Trên macOS cần cài Xcode Command Line Tools và Rust. `eframe/egui` sẽ dùng backend native của macOS, không cần cài thêm X11.
+
+```bash
+xcode-select --install
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source "$HOME/.cargo/env"
+cargo build --release
+```
+
+File build release trên macOS nằm tại:
+
+```text
+target/release/proxylite
+```
+
+Chạy thử:
+
+```bash
+./target/release/proxylite
+```
+
+Nếu macOS chặn app vì chưa ký chứng chỉ, có thể chạy trực tiếp từ Terminal như trên hoặc vào `System Settings` → `Privacy & Security` để cho phép mở app/binary vừa build.
+
 ## Build kèm icon
 
 Icon Windows của app dùng file `favicon.ico` ở thư mục gốc project. Build script `build.rs` sẽ tự nhúng icon này vào file `.exe` khi build trên Windows.
