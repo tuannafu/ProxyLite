@@ -24,7 +24,7 @@ jobs:
             binary: proxylite.exe
 
           - name: linux-x64
-            os: ubuntu-20.04
+            os: ubuntu-22.04
             archive: proxylite-linux-x64.tar.gz
             binary: proxylite
 
