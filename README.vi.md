@@ -1,20 +1,20 @@
 # ProxyLite
 
-ProxyLite is a lightweight Rust desktop and headless proxy app for quickly running HTTP/HTTPS and SOCKS5 proxies on Windows, Linux, macOS, and VPS servers.
+ProxyLite là ứng dụng Rust nhẹ để chạy proxy HTTP/HTTPS và SOCKS5 trên Windows, Linux, macOS và VPS. Ứng dụng hỗ trợ cả giao diện GUI lẫn chế độ Headless CLI cho server Linux không có desktop.
 
-> Vietnamese documentation: [`README.vi.md`](README.vi.md)
+> Tài liệu tiếng Anh chính: [`README.md`](README.md)
 
-## Features
+## Tính năng
 
-- HTTP proxy and HTTPS `CONNECT` tunneling.
-- SOCKS5 proxy with optional username/password authentication.
-- Multiple bind IPs, including public IPv6 addresses.
-- Native GUI powered by `eframe/egui`.
-- Full headless CLI mode for Linux servers without a desktop environment.
-- TOML config file support.
-- Built-in helpers for Linux `systemd` service installation and firewall commands.
+- Proxy HTTP và tunnel HTTPS qua `CONNECT`.
+- Proxy SOCKS5 có thể bật/tắt xác thực username/password.
+- Hỗ trợ nhiều bind IP, bao gồm IPv6 public.
+- GUI native dùng `eframe/egui`.
+- Chế độ Headless CLI đầy đủ cho Linux server không GUI.
+- Hỗ trợ file cấu hình TOML.
+- Có lệnh hỗ trợ tự tạo Linux `systemd` service và in lệnh mở firewall.
 
-## Quick start with GUI
+## Chạy GUI
 
 ### Windows
 
@@ -23,7 +23,7 @@ cargo run
 cargo build --release
 ```
 
-Release binary:
+File release:
 
 ```text
 target\release\proxylite.exe
@@ -31,7 +31,7 @@ target\release\proxylite.exe
 
 ### Linux desktop
 
-ProxyLite GUI uses `eframe/egui` with OpenGL, X11 and Wayland support.
+ProxyLite GUI dùng `eframe/egui` với OpenGL, X11 và Wayland.
 
 Ubuntu/Debian:
 
@@ -53,13 +53,13 @@ source "$HOME/.cargo/env"
 cargo build --release
 ```
 
-Release binary:
+File release:
 
 ```text
 target/release/proxylite
 ```
 
-Run:
+Chạy:
 
 ```bash
 ./target/release/proxylite
@@ -75,23 +75,23 @@ cargo build --release
 ./target/release/proxylite
 ```
 
-## Headless CLI for Linux servers
+## Headless CLI cho Linux server
 
-Headless mode does not start the GUI, so it works on VPS or Linux servers without `DISPLAY`.
+Chế độ headless không khởi tạo GUI, nên dùng được trên VPS/Linux server không có `DISPLAY`.
 
-Build first:
+Build trước:
 
 ```bash
 cargo build --release
 ```
 
-Show all commands:
+Xem toàn bộ lệnh:
 
 ```bash
 ./target/release/proxylite --help
 ```
 
-Run directly from command-line flags:
+Chạy trực tiếp bằng tham số dòng lệnh:
 
 ```bash
 ./target/release/proxylite headless \
@@ -105,7 +105,7 @@ Run directly from command-line flags:
   --password changeme
 ```
 
-Bind multiple IPs:
+Bind nhiều IP:
 
 ```bash
 ./target/release/proxylite headless \
@@ -114,17 +114,17 @@ Bind multiple IPs:
   --config proxylite.toml
 ```
 
-Stop with `Ctrl+C`.
+Dừng bằng `Ctrl+C`.
 
-## Config file
+## File cấu hình
 
-Create a sample config:
+Tạo file mẫu:
 
 ```bash
 ./target/release/proxylite init-config --output proxylite.toml
 ```
 
-Example `proxylite.toml`:
+Ví dụ `proxylite.toml`:
 
 ```toml
 bind_ips = ["0.0.0.0"]
@@ -137,21 +137,21 @@ username = "proxyuser"
 password = "changeme"
 ```
 
-Run with config:
+Chạy theo config:
 
 ```bash
 ./target/release/proxylite headless --config proxylite.toml
 ```
 
-Print a sample config to stdout:
+In config mẫu ra terminal:
 
 ```bash
 ./target/release/proxylite print-config
 ```
 
-## Auto install as a Linux systemd service
+## Tự cài thành Linux systemd service
 
-Copy the release binary to a stable location:
+Copy binary release vào vị trí ổn định:
 
 ```bash
 sudo mkdir -p /opt/proxylite
@@ -159,7 +159,7 @@ sudo cp target/release/proxylite /opt/proxylite/proxylite
 sudo chmod +x /opt/proxylite/proxylite
 ```
 
-Install, create default config, enable, and start the service:
+Cài service, tạo config mặc định, enable và start:
 
 ```bash
 sudo /opt/proxylite/proxylite install-service \
@@ -170,46 +170,46 @@ sudo /opt/proxylite/proxylite install-service \
   --start
 ```
 
-Check service status:
+Kiểm tra trạng thái:
 
 ```bash
 sudo systemctl status proxylite
 ```
 
-View logs:
+Xem log:
 
 ```bash
 journalctl -u proxylite -f
 ```
 
-Edit config:
+Sửa config và restart:
 
 ```bash
 sudo nano /etc/proxylite/proxylite.toml
 sudo systemctl restart proxylite
 ```
 
-Uninstall service:
+Gỡ service:
 
 ```bash
 sudo /opt/proxylite/proxylite uninstall-service
 ```
 
-## Firewall helpers
+## Firewall
 
-Print UFW commands from config:
+In lệnh UFW theo config:
 
 ```bash
 ./target/release/proxylite firewall --config proxylite.toml --backend ufw
 ```
 
-Print firewalld commands:
+In lệnh firewalld:
 
 ```bash
 ./target/release/proxylite firewall --config proxylite.toml --backend firewalld
 ```
 
-Windows PowerShell example:
+Windows PowerShell:
 
 ```powershell
 New-NetFirewallRule -DisplayName "ProxyLite" -Direction Inbound -Protocol TCP -LocalPort 8080,1080 -Action Allow
@@ -230,7 +230,7 @@ sudo firewall-cmd --permanent --add-port=1080/tcp
 sudo firewall-cmd --reload
 ```
 
-## Client examples
+## Ví dụ client
 
 HTTP/HTTPS:
 
@@ -244,21 +244,21 @@ SOCKS5:
 socks5://proxyuser:changeme@YOUR_VPS_IP:1080
 ```
 
-Test with curl:
+Test bằng curl:
 
 ```bash
 curl -x http://proxyuser:changeme@YOUR_VPS_IP:8080 https://ifconfig.co
 curl --socks5 proxyuser:changeme@YOUR_VPS_IP:1080 https://ifconfig.co
 ```
 
-For IPv6 clients, use brackets:
+Với IPv6 cần dùng dấu ngoặc vuông:
 
 ```text
 http://proxyuser:changeme@[2001:db8:1234:abcd::10]:8080
 socks5://proxyuser:changeme@[2001:db8:1234:abcd::10]:1080
 ```
 
-## Check public IPv6 support
+## Kiểm tra IPv6 public
 
 Windows PowerShell:
 
@@ -275,11 +275,11 @@ ip -6 route
 curl -6 https://ifconfig.co
 ```
 
-Addresses in `fe80::/10` are link-local, `::1` is loopback, and `fc00::/7` / `fd00::/8` are private ULA addresses. A public IPv6 address usually starts with `2xxx:` or `3xxx:`.
+Địa chỉ `fe80::/10` là link-local, `::1` là loopback, `fc00::/7` hoặc `fd00::/8` là private/ULA. IPv6 public thường bắt đầu bằng `2xxx:` hoặc `3xxx:`.
 
-## Windows icon
+## Icon Windows
 
-The Windows executable icon uses `favicon.ico` from the project root. `build.rs` embeds it automatically during Windows builds.
+Icon Windows dùng file `favicon.ico` ở thư mục gốc. `build.rs` sẽ tự nhúng icon vào `.exe` khi build trên Windows.
 
 ```powershell
 cargo clean

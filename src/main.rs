@@ -1,5 +1,4 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
+mod headless;
 mod proxy;
 
 use std::fs;
@@ -16,6 +15,20 @@ use proxy::{ProxyConfig, ProxyMode};
 use tokio::sync::watch;
 
 fn main() -> eframe::Result<()> {
+    if headless::has_cli_args() {
+        let cli = headless::parse_cli();
+        match cli.command {
+            Some(command) => {
+                if let Err(error) = headless::run_command(command) {
+                    eprintln!("Error: {error}");
+                    std::process::exit(1);
+                }
+            }
+            None => headless::print_help(),
+        }
+        return Ok(());
+    }
+
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("ProxyLite")
@@ -57,12 +70,12 @@ enum Tab {
 impl Tab {
     fn label(self) -> &'static str {
         match self {
-            Tab::Overview => "Tổng quan",
-            Tab::Statistics => "Thống kê",
-            Tab::Configuration => "Cấu hình",
+            Tab::Overview => "Overview",
+            Tab::Statistics => "Statistics",
+            Tab::Configuration => "Configuration",
             Tab::Firewall => "Firewall",
             Tab::Client => "Client",
-            Tab::Logs => "Nhật ký",
+            Tab::Logs => "Logs",
         }
     }
 
@@ -79,12 +92,12 @@ impl Tab {
 
     fn subtitle(self) -> &'static str {
         match self {
-            Tab::Overview => "Tổng quan nhanh trạng thái proxy",
-            Tab::Statistics => "Connect, packet và traffic realtime",
-            Tab::Configuration => "Bind IP, cổng, chế độ và xác thực",
-            Tab::Firewall => "Lệnh mở port cho VPS Windows / Linux",
-            Tab::Client => "URL proxy mẫu để dùng ngay",
-            Tab::Logs => "Nhật ký kết nối thời gian thực",
+            Tab::Overview => "Quick proxy status overview",
+            Tab::Statistics => "Realtime connections, packets, and traffic",
+            Tab::Configuration => "Bind IPs, ports, services, and authentication",
+            Tab::Firewall => "Port opening commands for Windows / Linux VPS",
+            Tab::Client => "Ready-to-use proxy client URLs",
+            Tab::Logs => "Realtime connection logs",
         }
     }
 }
@@ -143,9 +156,9 @@ impl Default for ProxyLiteApp {
             username: "proxyuser".to_owned(),
             password: "changeme".to_owned(),
             ipv6_status: check_ipv6_support(),
-            status: "Sẵn sàng".to_owned(),
+            status: "Ready".to_owned(),
             stats: RuntimeStats::default(),
-            logs: vec![format!("{} ProxyLite sẵn sàng", timestamp())],
+            logs: vec![format!("{} ProxyLite ready", timestamp())],
             log_rx: None,
             server_handle: None,
         }
@@ -265,9 +278,9 @@ impl ProxyLiteApp {
                         status_pill(
                             ui,
                             if self.is_running() {
-                                "● Đang chạy"
+                                "● Running"
                             } else {
-                                "○ Đã dừng"
+                                "○ Stopped"
                             },
                             self.is_running(),
                         );
@@ -300,18 +313,14 @@ impl ProxyLiteApp {
 
     fn render_overview(&mut self, ui: &mut egui::Ui) {
         card(ui, |ui| {
-            section_title(
-                ui,
-                "Điều khiển nhanh",
-                "Khởi động hoặc dừng proxy ngay tại đây",
-            );
+            section_title(ui, "Quick control", "Start or stop the proxy here");
             ui.horizontal(|ui| {
                 let start_enabled = !self.is_running();
                 if ui
                     .add_enabled(
                         start_enabled,
                         egui::Button::new(
-                            RichText::new("▶  Khởi động proxy")
+                            RichText::new("▶  Start proxy")
                                 .strong()
                                 .color(Color32::WHITE),
                         )
@@ -327,7 +336,7 @@ impl ProxyLiteApp {
                 if ui
                     .add_enabled(
                         stop_enabled,
-                        egui::Button::new(RichText::new("■  Dừng").strong().color(Color32::WHITE))
+                        egui::Button::new(RichText::new("■  Stop").strong().color(Color32::WHITE))
                             .fill(Color32::from_rgb(220, 38, 65))
                             .min_size(egui::vec2(130.0, 38.0)),
                     )
@@ -347,11 +356,11 @@ impl ProxyLiteApp {
         ui.horizontal(|ui| {
             stat_card(
                 ui,
-                "Trạng thái",
+                "Status",
                 if self.is_running() {
-                    "Đang chạy"
+                    "Running"
                 } else {
-                    "Đã dừng"
+                    "Stopped"
                 },
                 if self.is_running() {
                     Color32::from_rgb(74, 222, 128)
@@ -361,7 +370,7 @@ impl ProxyLiteApp {
             );
             stat_card(
                 ui,
-                "Dịch vụ",
+                "Services",
                 &self.service_summary(),
                 Color32::from_rgb(96, 165, 250),
             );
@@ -382,13 +391,13 @@ impl ProxyLiteApp {
         card(ui, |ui| {
             section_title(
                 ui,
-                "Endpoint công khai",
-                "Địa chỉ để client kết nối tới proxy",
+                "Public endpoints",
+                "Addresses for clients to connect to the proxy",
             );
             let hosts = parse_bind_hosts(&self.bind_host);
             if hosts.is_empty() {
                 ui.label(
-                    RichText::new("Chưa cấu hình bind IP")
+                    RichText::new("No bind IP configured")
                         .italics()
                         .color(Color32::from_rgb(160, 174, 196)),
                 );
@@ -419,10 +428,10 @@ impl ProxyLiteApp {
         });
 
         card(ui, |ui| {
-            section_title(ui, "IPv6", "Khả năng bind IPv6 trên máy hiện tại");
+            section_title(ui, "IPv6", "IPv6 bind capability on this machine");
             ui.label(RichText::new(&self.ipv6_status).size(13.0));
             ui.add_space(8.0);
-            if ui.button("Kiểm tra lại").clicked() {
+            if ui.button("Check again").clicked() {
                 self.ipv6_status = check_ipv6_support();
             }
         });
@@ -432,13 +441,13 @@ impl ProxyLiteApp {
         ui.horizontal(|ui| {
             stat_card(
                 ui,
-                "Connect tổng",
+                "Total connections",
                 &self.stats.accepted_connections.to_string(),
                 Color32::from_rgb(96, 165, 250),
             );
             stat_card(
                 ui,
-                "Đang mở",
+                "Active",
                 &self.stats.active_connections.to_string(),
                 Color32::from_rgb(74, 222, 128),
             );
@@ -457,16 +466,20 @@ impl ProxyLiteApp {
         });
 
         card(ui, |ui| {
-            section_title(ui, "Phân rã realtime", "HTTP, SOCKS5, xác thực và lỗi");
+            section_title(
+                ui,
+                "Realtime breakdown",
+                "HTTP, SOCKS5, authentication, and errors",
+            );
             metric_grid(ui, "HTTP CONNECT", self.stats.http_connects);
             metric_grid(ui, "HTTP request", self.stats.http_requests);
             metric_grid(ui, "SOCKS5 connect", self.stats.socks5_connects);
-            metric_grid(ui, "Từ chối auth", self.stats.auth_rejections);
-            metric_grid(ui, "Lỗi", self.stats.errors);
+            metric_grid(ui, "Auth rejections", self.stats.auth_rejections);
+            metric_grid(ui, "Errors", self.stats.errors);
         });
 
         card(ui, |ui| {
-            section_title(ui, "Traffic hai chiều", "Byte đã proxy qua tunnel");
+            section_title(ui, "Bidirectional traffic", "Bytes proxied through tunnels");
             ui.horizontal(|ui| {
                 stat_card(
                     ui,
@@ -482,7 +495,7 @@ impl ProxyLiteApp {
                 );
             });
             ui.add_space(8.0);
-            if ui.button("Reset thống kê").clicked() {
+            if ui.button("Reset statistics").clicked() {
                 self.stats = RuntimeStats::default();
             }
         });
@@ -490,20 +503,20 @@ impl ProxyLiteApp {
 
     fn render_configuration(&mut self, ui: &mut egui::Ui) {
         card(ui, |ui| {
-            section_title(ui, "Endpoint", "Bind IP và cổng lắng nghe");
+            section_title(ui, "Endpoint", "Bind IPs and listening ports");
             field_label(ui, "Bind IP(s)");
             ui.add(
                 egui::TextEdit::multiline(&mut self.bind_host)
                     .desired_rows(3)
                     .desired_width(f32::INFINITY)
-                    .hint_text("0.0.0.0 hoặc mỗi IPv6 public trên một dòng"),
+                    .hint_text("0.0.0.0 or one public IPv6 per line"),
             );
             ui.add_space(10.0);
             ui.horizontal(|ui| {
                 ui.vertical(|ui| {
-                    ui.checkbox(&mut self.enable_http, "Bật HTTP/HTTPS");
+                    ui.checkbox(&mut self.enable_http, "Enable HTTP/HTTPS");
                     ui.add_enabled_ui(self.enable_http, |ui| {
-                        field_label(ui, "Cổng HTTP/HTTPS");
+                        field_label(ui, "HTTP/HTTPS port");
                         ui.add(
                             egui::TextEdit::singleline(&mut self.http_port_text)
                                 .desired_width(150.0),
@@ -512,9 +525,9 @@ impl ProxyLiteApp {
                 });
                 ui.add_space(28.0);
                 ui.vertical(|ui| {
-                    ui.checkbox(&mut self.enable_socks5, "Bật SOCKS5");
+                    ui.checkbox(&mut self.enable_socks5, "Enable SOCKS5");
                     ui.add_enabled_ui(self.enable_socks5, |ui| {
-                        field_label(ui, "Cổng SOCKS5");
+                        field_label(ui, "SOCKS5 port");
                         ui.add(
                             egui::TextEdit::singleline(&mut self.socks5_port_text)
                                 .desired_width(150.0),
@@ -524,25 +537,32 @@ impl ProxyLiteApp {
             });
             ui.add_space(8.0);
             ui.label(
-                RichText::new("Mặc định bật cả HTTP/HTTPS :8080 và SOCKS5 :1080")
+                RichText::new("Default enables both HTTP/HTTPS :8080 and SOCKS5 :1080")
                     .size(12.0)
                     .color(Color32::from_rgb(150, 168, 198)),
             );
         });
 
         card(ui, |ui| {
-            section_title(ui, "Xác thực", "Bật để yêu cầu username/password từ client");
-            ui.checkbox(&mut self.require_auth, "Bật xác thực username/password");
+            section_title(
+                ui,
+                "Authentication",
+                "Require username/password from clients",
+            );
+            ui.checkbox(
+                &mut self.require_auth,
+                "Enable username/password authentication",
+            );
             ui.add_enabled_ui(self.require_auth, |ui| {
                 ui.add_space(6.0);
                 ui.horizontal(|ui| {
                     ui.vertical(|ui| {
-                        field_label(ui, "Tài khoản");
+                        field_label(ui, "Username");
                         ui.add(egui::TextEdit::singleline(&mut self.username).desired_width(240.0));
                     });
                     ui.add_space(20.0);
                     ui.vertical(|ui| {
-                        field_label(ui, "Mật khẩu");
+                        field_label(ui, "Password");
                         ui.add(egui::TextEdit::singleline(&mut self.password).desired_width(240.0));
                     });
                 });
@@ -550,14 +570,14 @@ impl ProxyLiteApp {
         });
 
         card(ui, |ui| {
-            section_title(ui, "Hành động", "Khởi động hoặc dừng proxy");
+            section_title(ui, "Actions", "Start or stop the proxy");
             ui.horizontal(|ui| {
                 let start_enabled = !self.is_running();
                 if ui
                     .add_enabled(
                         start_enabled,
                         egui::Button::new(
-                            RichText::new("▶  Khởi động proxy")
+                            RichText::new("▶  Start proxy")
                                 .strong()
                                 .color(Color32::WHITE),
                         )
@@ -573,7 +593,7 @@ impl ProxyLiteApp {
                 if ui
                     .add_enabled(
                         stop_enabled,
-                        egui::Button::new(RichText::new("■  Dừng").strong().color(Color32::WHITE))
+                        egui::Button::new(RichText::new("■  Stop").strong().color(Color32::WHITE))
                             .fill(Color32::from_rgb(220, 38, 65))
                             .min_size(egui::vec2(130.0, 38.0)),
                     )
@@ -584,7 +604,7 @@ impl ProxyLiteApp {
             });
             ui.add_space(6.0);
             ui.label(
-                RichText::new(format!("Trạng thái hiện tại: {}", self.status))
+                RichText::new(format!("Current status: {}", self.status))
                     .size(12.0)
                     .color(Color32::from_rgb(150, 168, 198)),
             );
@@ -595,8 +615,8 @@ impl ProxyLiteApp {
         card(ui, |ui| {
             section_title(
                 ui,
-                "Mở cổng trên VPS",
-                "Chạy với quyền admin/root để cho phép kết nối từ Internet",
+                "Open ports on VPS",
+                "Run as admin/root to allow connections from the Internet",
             );
             let ports = self.enabled_ports();
             let port_list = ports.join(",");
@@ -637,14 +657,14 @@ impl ProxyLiteApp {
         card(ui, |ui| {
             section_title(
                 ui,
-                "Gợi ý bảo mật",
-                "Khuyến nghị khi public proxy ra Internet",
+                "Security tips",
+                "Recommendations when exposing a proxy to the Internet",
             );
             for tip in [
-                "Luôn bật xác thực username/password ở tab Cấu hình",
-                "Giới hạn IP nguồn ở firewall nếu chỉ một số client cần kết nối",
-                "Đặt cổng khác mặc định 8080/1080 để giảm scan tự động",
-                "Theo dõi tab Nhật ký để phát hiện truy cập bất thường",
+                "Always enable username/password authentication in Configuration",
+                "Restrict source IPs in the firewall if only specific clients need access",
+                "Use non-default ports instead of 8080/1080 to reduce automated scans",
+                "Monitor Logs to detect unusual access",
             ] {
                 ui.label(RichText::new(format!("•  {}", tip)).size(13.0));
             }
@@ -662,12 +682,12 @@ impl ProxyLiteApp {
         card(ui, |ui| {
             section_title(
                 ui,
-                "URL proxy",
-                "Dán vào trình duyệt, curl hoặc client SOCKS5",
+                "Proxy URLs",
+                "Paste into browser, curl, or SOCKS5 clients",
             );
             if hosts.is_empty() {
                 ui.label(
-                    RichText::new("Chưa cấu hình bind IP. Hãy điền ở tab Cấu hình.")
+                    RichText::new("No bind IP configured. Fill it in the Configuration tab.")
                         .italics()
                         .color(Color32::from_rgb(160, 174, 196)),
                 );
@@ -699,7 +719,11 @@ impl ProxyLiteApp {
         });
 
         card(ui, |ui| {
-            section_title(ui, "Ví dụ curl", "Kiểm tra nhanh proxy từ máy khác");
+            section_title(
+                ui,
+                "curl examples",
+                "Quickly test the proxy from another machine",
+            );
             let example_host = hosts
                 .first()
                 .cloned()
@@ -728,7 +752,7 @@ impl ProxyLiteApp {
             }
             if !self.enable_http && !self.enable_socks5 {
                 ui.label(
-                    RichText::new("Chưa bật dịch vụ nào ở tab Cấu hình.")
+                    RichText::new("No service enabled in the Configuration tab.")
                         .italics()
                         .color(Color32::from_rgb(160, 174, 196)),
                 );
@@ -739,11 +763,11 @@ impl ProxyLiteApp {
     fn render_logs(&mut self, ui: &mut egui::Ui) {
         card(ui, |ui| {
             ui.horizontal(|ui| {
-                section_title(ui, "Nhật ký kết nối", "Luồng truy cập và lỗi proxy");
+                section_title(ui, "Connection logs", "Proxy access flow and errors");
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui
                         .add(
-                            egui::Button::new(RichText::new("Xóa nhật ký").color(Color32::WHITE))
+                            egui::Button::new(RichText::new("Clear logs").color(Color32::WHITE))
                                 .fill(Color32::from_rgb(55, 65, 81)),
                         )
                         .clicked()
@@ -793,12 +817,10 @@ impl ProxyLiteApp {
             ));
         }
         if services.is_empty() {
-            return Err("Cần bật ít nhất HTTP/HTTPS hoặc SOCKS5".to_owned());
+            return Err("Enable at least HTTP/HTTPS or SOCKS5".to_owned());
         }
         if services.len() == 2 && services[0].1 == services[1].1 {
-            return Err(
-                "HTTP/HTTPS và SOCKS5 không thể dùng cùng một cổng trên cùng IP".to_owned(),
-            );
+            return Err("HTTP/HTTPS and SOCKS5 cannot use the same port on the same IP".to_owned());
         }
         Ok(services)
     }
@@ -826,7 +848,7 @@ impl ProxyLiteApp {
             parts.push(format!("SOCKS5:{}", self.socks5_port_text.trim()));
         }
         if parts.is_empty() {
-            "Chưa bật".to_owned()
+            "Disabled".to_owned()
         } else {
             parts.join(" + ")
         }
@@ -848,13 +870,15 @@ impl ProxyLiteApp {
 
         if self.require_auth && (self.username.trim().is_empty() || self.password.trim().is_empty())
         {
-            self.push_log("Username/password không được để trống khi bật xác thực".to_owned());
+            self.push_log(
+                "Username/password cannot be empty when authentication is enabled".to_owned(),
+            );
             return;
         }
 
         let bind_hosts = parse_bind_hosts(&self.bind_host);
         if bind_hosts.is_empty() {
-            self.push_log("Bind IP không được để trống".to_owned());
+            self.push_log("Bind IP cannot be empty".to_owned());
             return;
         }
 
@@ -879,7 +903,7 @@ impl ProxyLiteApp {
                         Ok(runtime) => runtime,
                         Err(error) => {
                             let _ =
-                                thread_log_tx.send(format!("Không tạo được runtime: {}", error));
+                                thread_log_tx.send(format!("Failed to create runtime: {}", error));
                             return;
                         }
                     };
@@ -889,7 +913,7 @@ impl ProxyLiteApp {
                         thread_log_tx.clone(),
                         thread_shutdown_rx,
                     )) {
-                        let _ = thread_log_tx.send(format!("Proxy dừng do lỗi: {}", error));
+                        let _ = thread_log_tx.send(format!("Proxy stopped with error: {}", error));
                     }
                 }));
             }
@@ -901,12 +925,12 @@ impl ProxyLiteApp {
             join_handles,
         });
         self.status = format!(
-            "Đang chạy {} listener ({})",
+            "Running {} listener(s) ({})",
             bind_hosts.len() * services.len(),
             self.service_summary()
         );
         self.push_log(format!(
-            "Khởi động {} trên {} bind IP",
+            "Started {} on {} bind IP(s)",
             self.service_summary(),
             bind_hosts.len()
         ));
@@ -921,8 +945,8 @@ impl ProxyLiteApp {
                 }
             });
         }
-        self.status = "Đã dừng".to_owned();
-        self.push_log("Đang yêu cầu dừng proxy".to_owned());
+        self.status = "Stopped".to_owned();
+        self.push_log("Stop requested".to_owned());
     }
 
     fn drain_logs(&mut self) {
@@ -1004,7 +1028,7 @@ fn command_box(ui: &mut egui::Ui, label: &str, command: &str) {
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             if ui
                 .add(
-                    egui::Button::new(RichText::new("Sao chép").size(11.5).color(Color32::WHITE))
+                    egui::Button::new(RichText::new("Copy").size(11.5).color(Color32::WHITE))
                         .fill(Color32::from_rgb(37, 99, 235))
                         .min_size(egui::vec2(70.0, 22.0)),
                 )
@@ -1044,7 +1068,7 @@ fn parse_bind_hosts(bind_hosts: &str) -> Vec<String> {
 fn parse_port(text: &str, label: &str) -> Result<u16, String> {
     match text.trim().parse::<u16>() {
         Ok(port) if port > 0 => Ok(port),
-        _ => Err(format!("Cổng {} không hợp lệ", label)),
+        _ => Err(format!("Invalid {} port", label)),
     }
 }
 
@@ -1065,11 +1089,8 @@ fn format_bytes(bytes: u64) -> String {
 
 fn check_ipv6_support() -> String {
     match StdTcpListener::bind("[::1]:0") {
-        Ok(listener) => format!(
-            "có hỗ trợ bind IPv6 local ({})",
-            listener.local_addr().unwrap()
-        ),
-        Err(error) => format!("chưa bind được IPv6 local: {}", error),
+        Ok(listener) => format!("can bind local IPv6 ({})", listener.local_addr().unwrap()),
+        Err(error) => format!("cannot bind local IPv6 yet: {}", error),
     }
 }
 

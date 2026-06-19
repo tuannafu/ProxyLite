@@ -54,7 +54,11 @@ pub async fn run_proxy(
     let listener = TcpListener::bind(config.bind_addr()).await?;
     log(
         &log_tx,
-        format!("Đang nghe {} trên {}", config.mode, listener.local_addr()?),
+        format!(
+            "Listening for {} on {}",
+            config.mode,
+            listener.local_addr()?
+        ),
     );
 
     loop {
@@ -77,7 +81,7 @@ pub async fn run_proxy(
 
                     if let Err(error) = result {
                         stat(&client_log_tx, "error".to_owned());
-                        log(&client_log_tx, format!("{} lỗi: {}", peer_addr, error));
+                        log(&client_log_tx, format!("{} error: {}", peer_addr, error));
                     }
                     stat(&client_log_tx, "close".to_owned());
                 });
@@ -85,7 +89,7 @@ pub async fn run_proxy(
         }
     }
 
-    log(&log_tx, "Đã dừng proxy".to_owned());
+    log(&log_tx, "Proxy stopped".to_owned());
     Ok(())
 }
 
@@ -105,7 +109,7 @@ async fn handle_http_client(
         stat(&log_tx, "auth_reject".to_owned());
         log(
             &log_tx,
-            format!("{} bị từ chối do sai xác thực HTTP", peer_addr),
+            format!("{} rejected due to invalid HTTP authentication", peer_addr),
         );
         return Ok(());
     }
@@ -116,7 +120,7 @@ async fn handle_http_client(
     if parts.len() < 3 {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            "request HTTP không hợp lệ",
+            "invalid HTTP request",
         ));
     }
 
@@ -171,7 +175,7 @@ async fn read_http_header(client: &mut TcpStream) -> io::Result<Vec<u8>> {
 
     Err(io::Error::new(
         io::ErrorKind::InvalidData,
-        "header HTTP quá lớn hoặc chưa đầy đủ",
+        "HTTP header is too large or incomplete",
     ))
 }
 
@@ -188,7 +192,7 @@ fn parse_http_absolute_uri(uri: &str) -> io::Result<(String, u16, String)> {
     let without_scheme = uri.strip_prefix("http://").ok_or_else(|| {
         io::Error::new(
             io::ErrorKind::InvalidInput,
-            "HTTP proxy chỉ hỗ trợ URL http:// hoặc CONNECT cho HTTPS",
+            "HTTP proxy only supports http:// URLs or CONNECT for HTTPS",
         )
     })?;
 
@@ -237,7 +241,7 @@ async fn handle_socks5_client(
     if greeting[0] != 5 {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            "không phải SOCKS5",
+            "not a SOCKS5 request",
         ));
     }
 
@@ -348,7 +352,7 @@ async fn authenticate_socks5(
     } else {
         Err(io::Error::new(
             io::ErrorKind::PermissionDenied,
-            "sai username/password SOCKS5",
+            "invalid SOCKS5 username/password",
         ))
     }
 }
