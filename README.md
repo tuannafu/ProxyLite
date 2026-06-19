@@ -277,6 +277,53 @@ curl -6 https://ifconfig.co
 
 Addresses in `fe80::/10` are link-local, `::1` is loopback, and `fc00::/7` / `fd00::/8` are private ULA addresses. A public IPv6 address usually starts with `2xxx:` or `3xxx:`.
 
+## GitHub Actions release builds
+
+This repository includes a ready-to-use release workflow at:
+
+```text
+.github/workflows/release.yml
+```
+
+It builds and packages ProxyLite for:
+
+- Windows x64: `proxylite-windows-x64.zip`
+- Linux x64: `proxylite-linux-x64.tar.gz`
+- macOS Intel x64: `proxylite-macos-x64.tar.gz`
+- macOS Apple Silicon arm64: `proxylite-macos-arm64.tar.gz`
+
+Each archive also gets a `.sha256` checksum file.
+
+### Automatic release by tag
+
+Commit and push your changes, then create a version tag:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+GitHub Actions will build all platforms and upload the archives to the GitHub Release for that tag.
+
+### Manual workflow run
+
+You can also run the workflow manually:
+
+1. Open the GitHub repository.
+2. Go to `Actions`.
+3. Select `Release`.
+4. Click `Run workflow`.
+
+Manual runs upload build artifacts to the workflow run. Tagged runs additionally upload files to GitHub Releases.
+
+### Required repository setting
+
+The workflow uses `GITHUB_TOKEN` with `contents: write` permission. If release upload fails, check:
+
+```text
+Repository Settings → Actions → General → Workflow permissions → Read and write permissions
+```
+
 ## Windows icon
 
 The Windows executable icon uses `favicon.ico` from the project root. `build.rs` embeds it automatically during Windows builds.

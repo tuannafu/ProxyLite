@@ -277,6 +277,53 @@ curl -6 https://ifconfig.co
 
 Địa chỉ `fe80::/10` là link-local, `::1` là loopback, `fc00::/7` hoặc `fd00::/8` là private/ULA. IPv6 public thường bắt đầu bằng `2xxx:` hoặc `3xxx:`.
 
+## Build release bằng GitHub Actions
+
+Repository đã có sẵn workflow release tại:
+
+```text
+.github/workflows/release.yml
+```
+
+Workflow này tự build và đóng gói ProxyLite cho:
+
+- Windows x64: `proxylite-windows-x64.zip`
+- Linux x64: `proxylite-linux-x64.tar.gz`
+- macOS Intel x64: `proxylite-macos-x64.tar.gz`
+- macOS Apple Silicon arm64: `proxylite-macos-arm64.tar.gz`
+
+Mỗi file đóng gói có thêm file checksum `.sha256`.
+
+### Tự động release bằng tag
+
+Commit và push code lên GitHub, sau đó tạo tag version:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+GitHub Actions sẽ tự build đủ nền tảng và upload file vào GitHub Release của tag đó.
+
+### Chạy workflow thủ công
+
+Có thể chạy build thủ công:
+
+1. Mở repository trên GitHub.
+2. Vào `Actions`.
+3. Chọn `Release`.
+4. Bấm `Run workflow`.
+
+Chạy thủ công sẽ upload file vào artifact của workflow run. Chạy bằng tag sẽ upload thêm vào GitHub Releases.
+
+### Thiết lập quyền cần kiểm tra
+
+Workflow dùng `GITHUB_TOKEN` với quyền `contents: write`. Nếu upload release lỗi, kiểm tra:
+
+```text
+Repository Settings → Actions → General → Workflow permissions → Read and write permissions
+```
+
 ## Icon Windows
 
 Icon Windows dùng file `favicon.ico` ở thư mục gốc. `build.rs` sẽ tự nhúng icon vào `.exe` khi build trên Windows.
